@@ -1,0 +1,133 @@
+To process both folders (one containing DICOM images and the other containing `.pt` and `.py` files) as inputs and generate a `.txt` output using a Bazel build in an EC2 instance, here’s how you can structure it. 
+### Step-by-Step Workflow
+
+### 1. Set up Bazel Workspace
+First, ensure that your project is structured correctly for Bazel. If not, you need to create a `WORKSPACE` file in the root of your project. This tells Bazel where your project starts.
+
+```bash
+cd /path/to/project
+touch WORKSPACE
+```
+
+### 2. **Organize Input Files**
+Your directory structure should look something like this:
+```
+build/
+├── dataset/
+│   ├── train/  (contains DICOM images)
+│   └── test/   (contains DICOM images)
+└── scripts/
+    ├── model.pt  (PyTorch model file)
+    └── process.py  (Python script)
+```
+
+### 3. **Write a Bazel Build File**
+You’ll need to create a `BUILD` file in the root directory where you want to define how Bazel will handle the input files and run the Python script.
+
+Here’s an example `BUILD` file:
+
+```python
+py_binary(
+    name = "dicom_processor",
+    srcs = ["scripts/process.py"],
+    data = [
+        "dataset/train",
+        "dataset/test",
+        "scripts/model.pt",
+    ],
+    main = "scripts/process.py",
+)
+```
+
+### Explanation:
+- `name = "dicom_processor"`: The target name for Bazel.
+- `srcs = ["scripts/process.py"]`: Specifies the Python script you want to run.
+- `data = ["dataset/train", "dataset/test", "scripts/model.pt"]`: The required input files (DICOM images and the PyTorch model).
+- `main = "scripts/process.py"`: This defines the entry point script for Bazel.
+
+### 4. **Modify the Python Script (`process.py`) to Handle Inputs and Outputs**
+Ensure your `process.py` script reads from the `dataset/train`, `dataset/test`, and `scripts/model.pt` files and writes the output to a `.txt` file.
+
+Here’s a simple outline for the Python script:
+
+```python
+import os
+import torch
+from pydicom import dcmread
+
+# Path to the directories and files
+train_dir = "dataset/train"
+test_dir = "dataset/test"
+model_path = "scripts/model.pt"
+output_file = "output.txt"
+
+# Load the model
+model = torch.load(model_path)
+
+def process_dicom_images(directory):
+    results = []
+    for filename in os.listdir(directory):
+        if filename.endswith(".dcm"):
+            file_path = os.path.join(directory, filename)
+            dicom = dcmread(file_path)
+            # Perform your processing with model here (example dummy prediction)
+            result = model(dicom.pixel_array)
+            results.append(f"{filename}: {result}")
+    return results
+
+def main():
+    # Process train and test datasets
+    train_results = process_dicom_images(train_dir)
+    test_results = process_dicom_images(test_dir)
+    
+    # Write the output to a file
+    with open(output_file, 'w') as f:
+        f.write("Train Results:\n")
+        f.writelines("\n".join(train_results))
+        f.write("\nTest Results:\n")
+        f.writelines("\n".join(test_results))
+    
+    print(f"Results saved to {output_file}")
+
+if __name__ == "__main__":
+    main()
+```
+
+- **DICOM Processing**: This script uses `pydicom` to read `.dcm` files and `torch.load` to load the model. You can adapt the model and DICOM image processing as per your logic.
+- **Output**: The results are written to `output.txt`.
+
+### 5. **Build and Run with Bazel**
+Now, in the EC2 instance, you can run the Bazel build and execution.
+
+- **Navigate to your project directory**:
+   ```bash
+   cd /path/to/build
+   ```
+
+- **Build the target**:
+   ```bash
+   bazel build //:dicom_processor
+   ```
+
+- **Run the script**:
+   You can run the Bazel target that processes the DICOM images and generates the `.txt` output:
+   ```bash
+   bazel run //:dicom_processor
+   ```
+
+### 6. **Check the Output**
+After the build finishes, Bazel will generate the `output.txt` file in the specified location, containing the results of the processing.
+
+### Additional Considerations:
+- **Dependencies**: Ensure that `pydicom` and `torch` are available in the Python environment within Bazel. You can declare these dependencies in a `requirements.txt` and use a `pip_install` rule in your Bazel setup.
+   - Example of a rule for installing Python dependencies:
+     ```python
+     load("@rules_python//python:pip.bzl", "pip_install")
+
+     pip_install(
+         requirements = "requirements.txt",
+     )
+     ```
+- **Memory Issues**: Depending on the size of the DICOM images or model, you might need to adjust the instance type for more memory or compute resources.
+
+By following these steps, you should be able to process the folders, run the model, and generate the output in a `.txt` file using Bazel in the EC2 instance.
