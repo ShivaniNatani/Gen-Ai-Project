@@ -1,0 +1,43 @@
+import os
+
+# Define the paths to the directories
+build_path = 'build'  # Path to the build directory
+dataset_path = os.path.join(build_path, 'dataset', 'images')
+model_path = os.path.join(build_path, 'model')
+
+# Create the output file path
+output_file_path = os.path.join(build_path, 'output.txt')
+
+def collect_data(dataset_path, model_path):
+    # Initialize a list to collect data
+    output_data = []
+
+    # Check if dataset images folder exists
+    if os.path.exists(dataset_path):
+        output_data.append("Dataset Images:\n")
+        for filename in os.listdir(dataset_path):
+            output_data.append(f"Image: {filename}\n")
+    else:
+        output_data.append("Dataset images folder does not exist.\n")
+
+    # Check if model folder exists
+    if os.path.exists(model_path):
+        output_data.append("Model Files:\n")
+        for filename in os.listdir(model_path):
+            output_data.append(f"Model file: {filename}\n")
+    else:
+        output_data.append("Model folder does not exist.\n")
+
+    return output_data
+
+def write_output_file(output_file_path, output_data):
+    with open(output_file_path, 'w') as f:
+        f.writelines(output_data)
+
+# Collect data from the folders
+output_data = collect_data(dataset_path, model_path)
+
+# Write the collected data to the output file
+write_output_file(output_file_path, output_data)
+
+print(f"Output written to {output_file_path}")
